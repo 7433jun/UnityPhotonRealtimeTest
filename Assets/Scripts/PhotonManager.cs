@@ -1,45 +1,69 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Realtime;
-using UnityEngine.UI;
-using ExitGames.Client.Photon;
+using UnityEngine.SceneManagement;
 
-public class TestClient : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallbacks, ILobbyCallbacks, IInRoomCallbacks, IOnEventCallback
+public class PhotonManager : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallbacks, ILobbyCallbacks, IInRoomCallbacks
 {
-    private LoadBalancingClient client;
+    private static PhotonManager instance = null;
 
-    public Text clientStateText;
-    public Text clientUserID;
-    public Text currentLobby;
+    public AppSettings appSettings = new AppSettings();
 
-    void Start()
+    public LoadBalancingClient client;
+
+
+    public LobbyManager lobbyManager;
+    public List<RoomInfo> PMroomList = new List<RoomInfo>();
+
+    void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+    
+    void Update()
+    {
+        if (client != null)
+        {
+            //#######ÇÊ¼ö########
+            client.Service();
+
+            //Debug.Log(client.State.ToString());
+            //Debug.Log(client.CurrentRoom.Players.Count);
+        }
+    }
+
+    public static PhotonManager Instance
+    {
+        get
+        {
+            if (instance == null)
+                return null;
+            return instance;
+        }
+    }
+
+    public void ConnectWithOption(string nickName)
     {
         client = new LoadBalancingClient();
-        client.AppId = "33712f15-76be-4e8c-83f4-d85827acc2f7";
-        bool connectInProcess = client.ConnectToRegionMaster("kr");
+
+        client.NickName = nickName;
+        client.ConnectUsingSettings(appSettings);
 
         client.AddCallbackTarget(this);
     }
 
-    
-    void Update()
-    {
-        client.Service();
-
-        clientStateText.text = $"Client State : {client.State}";
-        Debug.Log(client.State.ToString());
-
-        if (client.InLobby)
-        {
-            clientUserID.text = $"Client UserID : {client.UserId}";
-            currentLobby.text = $"Current Lobby : {client.CurrentLobby}";
-        }
-    }
-
     private void OnApplicationQuit()
     {
-        client.Disconnect();
+        if (client != null && client.IsConnected)
+            client.Disconnect();
     }
 
     //IConnectionCallbacks
@@ -91,7 +115,7 @@ public class TestClient : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallb
 
     public void OnJoinedRoom()
     {
-        
+        SceneManager.LoadSceneAsync("Room 1");
     }
 
     public void OnJoinRoomFailed(short returnCode, string message)
@@ -106,23 +130,32 @@ public class TestClient : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallb
 
     public void OnLeftRoom()
     {
-       
+        //client.OpJoinLobby(TypedLobby.Default);
     }
 
     //ILobbyCallbacks
     public void OnJoinedLobby()
     {
-        
+        SceneManager.LoadSceneAsync("Lobby");
     }
 
     public void OnLeftLobby()
     {
-        
+        client.Disconnect();
+
+        SceneManager.LoadSceneAsync("Launcher");
     }
 
     public void OnRoomListUpdate(List<RoomInfo> roomList)
     {
-        
+        PMroomList = roomList;
+
+        if (lobbyManager == null)
+            return;
+
+        lobbyManager.LMroomList = PMroomList;
+        lobbyManager.DeleteAllPanel();
+        lobbyManager.CreatePanel();
     }
 
     public void OnLobbyStatisticsUpdate(List<TypedLobbyInfo> lobbyStatistics)
@@ -156,9 +189,9 @@ public class TestClient : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallb
         
     }
 
-    //IOnEventCallback
-    public void OnEvent(EventData photonEvent)
+    public void OnGUI()
     {
-        
+        if (client != null)
+            GUI.TextArea(new Rect(0, 0, 300, 30), client.State.ToString());
     }
 }
