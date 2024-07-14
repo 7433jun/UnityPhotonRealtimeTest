@@ -3,6 +3,8 @@ using UnityEngine;
 using Photon.Realtime;
 using UnityEngine.SceneManagement;
 
+using Hashtable = ExitGames.Client.Photon.Hashtable;
+
 public class PhotonManager : MonoBehaviour, IConnectionCallbacks, IMatchmakingCallbacks, ILobbyCallbacks, IInRoomCallbacks
 {
     private static PhotonManager instance = null;
@@ -34,9 +36,6 @@ public class PhotonManager : MonoBehaviour, IConnectionCallbacks, IMatchmakingCa
         {
             //#######ÇÊ¼ö########
             client.Service();
-
-            //Debug.Log(client.State.ToString());
-            //Debug.Log(client.CurrentRoom.Players.Count);
         }
     }
 
@@ -115,6 +114,17 @@ public class PhotonManager : MonoBehaviour, IConnectionCallbacks, IMatchmakingCa
 
     public void OnJoinedRoom()
     {
+        foreach (Player p in PhotonManager.Instance.client.CurrentRoom.Players.Values)
+        {
+            if (p.IsLocal)
+            {
+                Hashtable customProperties = new Hashtable();
+                customProperties["PlayerScene"] = 1;
+
+                p.SetCustomProperties(customProperties);
+            }
+        }
+
         SceneManager.LoadSceneAsync("Room 1");
     }
 
@@ -166,7 +176,7 @@ public class PhotonManager : MonoBehaviour, IConnectionCallbacks, IMatchmakingCa
     //IInRoomCallbacks
     public void OnPlayerEnteredRoom(Player newPlayer)
     {
-        
+
     }
 
     public void OnPlayerLeftRoom(Player otherPlayer)

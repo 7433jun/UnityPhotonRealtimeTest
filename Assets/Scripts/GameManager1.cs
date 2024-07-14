@@ -3,33 +3,61 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-public class GameManager : MonoBehaviour
+using Hashtable = ExitGames.Client.Photon.Hashtable;
+
+public class GameManager1 : MonoBehaviour
 {
     [SerializeField] GameObject playerPrefab;
+    private int roomNumber = 1;
+    private Player localPlayer;
 
     private Dictionary<int, GameObject> characters = new Dictionary<int, GameObject>();
 
     void Start()
     {
-        
+        foreach (Player p in PhotonManager.Instance.client.CurrentRoom.Players.Values)
+        {
+            if (p.IsLocal)
+            {
+                localPlayer = p;
+            }
+        }
     }
 
     void Update()
     {
-        CharacterSetting();
+        CharacterUpdate();
+
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            Hashtable customProperties = new Hashtable();
+            customProperties["PlayerScene"] = 2;
+            localPlayer.SetCustomProperties(customProperties);
+
+            SceneManager.LoadSceneAsync("Room 2");
+        }
     }
 
-    private void CharacterSetting()
+    private void CharacterUpdate()
     {
         if (!PhotonManager.Instance.client.InRoom) return;
 
         lock (PhotonManager.Instance)
         {
+            Dictionary<int, Player> currentScenePlayers = PhotonManager.Instance.client.CurrentRoom.Players.Where(kvp => (int)kvp.Value.CustomProperties["PlayerScene"] == roomNumber).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
             // 플레이어 캐릭터 생성
-            foreach (Player p in PhotonManager.Instance.client.CurrentRoom.Players.Values)
+            foreach (Player p in currentScenePlayers.Values)
             {
                 GameObject character = null;
+
                 bool found = characters.TryGetValue(p.ActorNumber, out character);
 
                 if (!found)
@@ -41,12 +69,13 @@ public class GameManager : MonoBehaviour
             }
 
             // 플레이어 캐릭터 삭제
-            if (characters.Count != PhotonManager.Instance.client.CurrentRoom.Players.Count)
+            if (characters.Count != currentScenePlayers.Count)
             {
                 HashSet<int> keysToRemove = new HashSet<int>();
+
                 foreach (int characterKey in characters.Keys)
                 {
-                    if (!PhotonManager.Instance.client.CurrentRoom.Players.Keys.Contains(characterKey))
+                    if (!currentScenePlayers.Keys.Contains(characterKey))
                     {
                         keysToRemove.Add(characterKey);
                     }

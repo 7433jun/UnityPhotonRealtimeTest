@@ -25,6 +25,11 @@ public class ClientPlayer : MonoBehaviour, IOnEventCallback
 
     void Update()
     {
+        LocalUpdate();
+    }
+
+    private void LocalUpdate()
+    {
         if (!player.IsLocal) return;
         if (!PhotonManager.Instance.client.InRoom) return;
 
@@ -34,6 +39,12 @@ public class ClientPlayer : MonoBehaviour, IOnEventCallback
         transform.position += new Vector3(h, 0, v).normalized * speed * Time.deltaTime;
 
         PhotonManager.Instance.client.OpRaiseEvent(1, WriteEvMove(), new RaiseEventOptions(), new SendOptions() { Reliability = true });
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            Debug.Log("Send Event");
+            PhotonManager.Instance.client.OpRaiseEvent(2, new Hashtable()[0] = new string[] { DateTime.UtcNow.ToString("HH:mm:ss.fff") ,"hello"}, new RaiseEventOptions(), new SendOptions() { Reliability = true });
+        }
     }
 
     public Hashtable WriteEvMove()
@@ -69,12 +80,22 @@ public class ClientPlayer : MonoBehaviour, IOnEventCallback
                 case 1:
                     ReadEvMove((Hashtable)photonEvent.CustomData);
                     break;
+                case 2:
+                    Debug.Log(photonEvent.CustomData);
+                    string[] strs = (string[])photonEvent.CustomData;
+                    Debug.Log("Send Time : " + strs[0]);
+                    Debug.Log(strs[1]);
+                    Debug.Log("Receive Time : " + DateTime.UtcNow.ToString("HH:mm:ss.fff"));
+                    break;
             }
         }
     }
-
+    
     public void OnDestroy()
     {
+        if (PhotonManager.Instance == null)
+            return;
+
         if (PhotonManager.Instance.client != null)
             PhotonManager.Instance.client.RemoveCallbackTarget(this);
     }
